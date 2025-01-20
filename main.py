@@ -1,5 +1,3 @@
-from operator import attrgetter
-
 import arrow
 import requests
 from arrow import Arrow
@@ -43,16 +41,14 @@ def request_course_for_assignment(course_options: list[str], assignment: str) ->
 def ics_to_assignments(ics_url: str, start_date: Arrow) -> list[Assignment]:
     response = requests.get(ics_url)
     calendar = Calendar(response.text)
-    raw = [
+    return [
         Assignment(
             title=ics_event.name,
             course=None,
             due=ics_event.end
         )
-        for ics_event in calendar.events
-        if ics_event.end > start_date
+        for ics_event in calendar.timeline.start_after(start_date)
     ]
-    return sorted(raw, key=attrgetter('due'))
 
 
 def main() -> None:
