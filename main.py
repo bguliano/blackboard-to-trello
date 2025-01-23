@@ -1,3 +1,7 @@
+import json
+from pathlib import Path
+from typing import Any
+
 import arrow
 import requests
 from arrow import Arrow
@@ -5,13 +9,6 @@ from ics import Calendar
 
 from objects import Assignment
 from trello_manager import TrelloManager
-
-
-def request_course_names() -> list[str]:
-    courses = []
-    while (inpt := input('Enter course name (or "done" to finish): ')) != 'done':
-        courses.append(inpt.upper())
-    return courses
 
 
 def print_courses(courses: list[str]) -> None:
@@ -52,17 +49,24 @@ def ics_to_assignments(ics_url: str, start_date: Arrow) -> list[Assignment]:
 
 
 def main() -> None:
-    # first, request courses
-    courses = request_course_names()
-    print()
+    # check if config is available
+    if not (config_path := Path('config.json')).exists():
+        raise FileNotFoundError('No config file exists. Please create one using the following template:'
+                                '\n{'
+                                '\n    "ics_url": "https://",'
+                                '\n    "start_date": "MM-DD-YYYY",'
+                                '\n    "course_names": ['
+                                '\n        "CRSE 100",'
+                                '\n        "CRSE 101",'
+                                '\n        "CRSE 102"'
+                                '\n    ]'
+                                '\n}')
 
-    # next, request ics url
-    ics_url = input('Enter ICS URL: ')
-
-    # next, request start date for courses in this semester
-    str_date = input('Enter semester start date (MM-DD-YYYY): ')
-    start_date = arrow.get(str_date, 'MM-DD-YYYY')
-    print()
+    # extract config data
+    config: dict[str, Any] = json.loads(config_path.read_bytes())
+    ics_url = config['ics_url']
+    start_date = arrow.get(config['start_date'], 'MM-DD-YYYY')
+    courses: list[str] = config['course_names']
 
     # convert ics events to assignments
     print('Getting ICS events...', end='', flush=True)
@@ -73,10 +77,21 @@ def main() -> None:
     trello_manager = TrelloManager('School', 'Backlog', courses)
 
     # iterate over each event and ask for course assignment. then, add to trello
+    # ONLY IF it does not already exist
     for i, assignment in enumerate(assignments, 1):
+        if assignment.title in trello_manager.existing_card_names:
+            print(f'Skipping assignment ({i}/{len(assignments)}): {assignment.title} (already exists in Trello)')
+            continue
+
         assignment.course = request_course_for_assignment(courses, assignment.title)
         trello_manager.add_assignment_card(assignment)
         print(f'Added assignment ({i}/{len(assignments)}): {assignment.title}\n')
+    print()
+
+    # once done, sort the list by due date
+    print('Sorting assignments by due date...', end='', flush=True)
+    trello_manager.sort_list()
+    print('Done.')
 
 
 if __name__ == '__main__':
