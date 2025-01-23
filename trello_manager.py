@@ -45,7 +45,9 @@ LABEL_COLORS = [
 
 class TrelloManager:
     def __init__(self, board_name: str, list_name: str, courses: list[str]):
-        secrets: dict[str, Any] = json.loads(Path('secrets.json').read_bytes())
+        if not (secrets_path := Path('secrets.json')).exists():
+            raise FileNotFoundError('No secrets file exists. Please create one using the template "secrets.json.template"')
+        secrets: dict[str, Any] = json.loads(secrets_path.read_bytes())
 
         self._base_url = 'https://api.trello.com/1'
         self._base_headers = {'Accept': 'application/json'}

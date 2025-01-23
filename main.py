@@ -51,16 +51,7 @@ def ics_to_assignments(ics_url: str, start_date: Arrow) -> list[Assignment]:
 def main() -> None:
     # check if config is available
     if not (config_path := Path('config.json')).exists():
-        raise FileNotFoundError('No config file exists. Please create one using the following template:'
-                                '\n{'
-                                '\n    "ics_url": "https://",'
-                                '\n    "start_date": "MM-DD-YYYY",'
-                                '\n    "course_names": ['
-                                '\n        "CRSE 100",'
-                                '\n        "CRSE 101",'
-                                '\n        "CRSE 102"'
-                                '\n    ]'
-                                '\n}')
+        raise FileNotFoundError('No config file exists. Please create one using the template "config.json.template"')
 
     # extract config data
     config: dict[str, Any] = json.loads(config_path.read_bytes())
