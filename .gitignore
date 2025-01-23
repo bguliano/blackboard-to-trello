@@ -242,4 +242,4 @@ cython_debug/
 #.idea/
 
 secrets.py
-courses_list.txt
+config.json
