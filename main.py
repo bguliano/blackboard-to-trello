@@ -65,7 +65,7 @@ def main() -> None:
     print('Done.\n')
 
     # set up the trello manager
-    trello_manager = TrelloManager('School', 'Backlog', courses)
+    trello_manager = TrelloManager('Guliano-USC', 'Backlog', courses)
 
     # iterate over each event and ask for course assignment. then, add to trello
     # ONLY IF it does not already exist
