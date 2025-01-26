@@ -71,7 +71,11 @@ def main() -> None:
     # ONLY IF it does not already exist
     for i, assignment in enumerate(assignments, 1):
         if assignment.title in trello_manager.existing_card_names:
-            print(f'Skipping assignment ({i}/{len(assignments)}): {assignment.title} (already exists in Trello)')
+            if assignment.due_date_string() != trello_manager.existing_card_names[assignment.title]:
+                trello_manager.update_assignment_card(assignment)
+                print(f'Updating assignment ({i}/{len(assignments)}): {assignment.title} (new due date)')
+            else:
+                print(f'Skipping assignment ({i}/{len(assignments)}): {assignment.title} (already exists in Trello)')
             continue
 
         assignment.course = request_course_for_assignment(courses, assignment.title)

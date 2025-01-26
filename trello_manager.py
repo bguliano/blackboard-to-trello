@@ -3,7 +3,7 @@ import math
 import random
 from operator import itemgetter
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import requests
 
@@ -46,7 +46,8 @@ LABEL_COLORS = [
 class TrelloManager:
     def __init__(self, board_name: str, list_name: str, courses: list[str]):
         if not (secrets_path := Path('secrets.json')).exists():
-            raise FileNotFoundError('No secrets file exists. Please create one using the template "secrets.json.template"')
+            raise FileNotFoundError(
+                'No secrets file exists. Please create one using the template "secrets.json.template"')
         secrets: dict[str, Any] = json.loads(secrets_path.read_bytes())
 
         self._base_url = 'https://api.trello.com/1'
@@ -63,7 +64,8 @@ class TrelloManager:
         self.course_label_ids: dict[str, str] | None = None
         self.register_course_label_ids(courses)
 
-        self.existing_card_names: list[str] = []
+        # name: date
+        self.existing_card_names: dict[str, str] = {}
         self.register_existing_card_names()
 
     def _get_request(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any] | list[
@@ -141,18 +143,18 @@ class TrelloManager:
         all_lists = self._get_request(f'boards/{self.active_board_id}/lists', {'fields': 'name'})
 
         for list_ in all_lists:
-            existing_cards = self._get_request(f'lists/{list_['id']}/cards', {'fields': 'name'})
-            self.existing_card_names.extend(card['name'] for card in existing_cards)
+            existing_cards = self._get_request(f'lists/{list_['id']}/cards', {'fields': 'name,due'})
+            self.existing_card_names.update({card['name']: card['due'] for card in existing_cards})
 
     def add_assignment_card(self, assignment: Assignment) -> None:
         # do not add card if it already exists
         if assignment.title in self.existing_card_names:
             return
 
-        params = {
+        params: dict[str, str] = {
             'idList': self.active_list_id,
             'name': assignment.title,
-            'due': assignment.due.to('UTC').isoformat().replace('+00:00', 'Z'),
+            'due': assignment.due_date_string(),
             'idLabels': self.course_label_ids[assignment.course],
             'pos': 'bottom'
         }
@@ -163,6 +165,13 @@ class TrelloManager:
         sorted_cards = sorted(cards, key=lambda card: card.get('due') or '')
         for i, card in enumerate(sorted_cards, 1):
             self._put_request(f'cards/{card['id']}', {'pos': i})
+
+    def update_assignment_card(self, assignment: Assignment):
+        cards: list[dict[str, str]] = self._get_request(f'lists/{self.active_list_id}/cards', {'fields': 'name,due'})
+        for card in cards:
+            if card['name'] == assignment.title:
+                self._put_request(f'cards/{card["id"]}', {'due': assignment.due_date_string()})
+                break
 
 
 if __name__ == '__main__':
